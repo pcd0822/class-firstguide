@@ -247,42 +247,32 @@ export default function StudentFlowPage() {
                 <div className="flex gap-2 my-4">
                   <div
                     className="flex flex-col justify-between w-11 shrink-0 text-center text-slate-500 text-xs font-medium border-2 border-slate-200 rounded-xl bg-slate-100/80 py-2"
-                    style={{ minHeight: `${((settings?.rows ?? 4) + 1) * 2.75 + 0.5}rem` }}
+                    style={{ minHeight: `${((settings?.rows ?? 4) * 2.75) + 3 + 0.5}rem` }}
                   >
                     <span>🚪 문</span>
                     <span>🚪 문</span>
                   </div>
                   <div className="flex flex-col gap-1.5 p-3 rounded-2xl bg-slate-50/80 border border-slate-200/80">
-                    {Array.from({ length: (settings?.rows ?? 4) + 1 }, (_, i) => {
-                      const r = settings?.rows ?? 4;
-                      const c = settings?.cols ?? 6;
-                      const deskRow = Math.floor(r / 2);
-                      if (i === deskRow) {
-                        return (
-                          <div key={`desk-${i}`} className="text-center py-1.5 rounded-xl bg-amber-100/90 border border-amber-200 text-amber-800 text-sm font-medium">
-                            🪑 교탁
-                          </div>
-                        );
-                      }
-                      const seatRow = i < deskRow ? i : i - 1;
-                      return (
-                        <div key={i} className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${c}, minmax(2.5rem, 3rem))` }}>
-                          {Array.from({ length: c }, (_, col) => {
-                            const isMySeat = student.seat.row === seatRow && student.seat.col === col;
-                            return (
-                              <div
-                                key={col}
-                                className={`min-w-[2.5rem] min-h-[2.5rem] rounded-xl border-2 flex items-center justify-center text-xs font-bold ${
-                                  isMySeat ? 'bg-gradient-to-br from-amber-100 to-rose-100 border-amber-400 text-amber-800 shadow-sm' : 'bg-white/60 border-slate-200 text-slate-400'
-                                }`}
-                              >
-                                {isMySeat ? <span className="truncate px-0.5">{student.name}</span> : <span className="opacity-40" aria-hidden>▢</span>}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
+                    {Array.from({ length: settings?.rows ?? 4 }, (_, i) => (
+                      <div key={i} className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${settings?.cols ?? 6}, minmax(2.5rem, 3rem))` }}>
+                        {Array.from({ length: settings?.cols ?? 6 }, (_, col) => {
+                          const isMySeat = student.seat.row === i && student.seat.col === col;
+                          return (
+                            <div
+                              key={col}
+                              className={`min-w-[2.5rem] min-h-[2.5rem] rounded-xl border-2 flex items-center justify-center text-xs font-bold ${
+                                isMySeat ? 'bg-gradient-to-br from-amber-100 to-rose-100 border-amber-400 text-amber-800 shadow-sm' : 'bg-white/60 border-slate-200 text-slate-400'
+                              }`}
+                            >
+                              {isMySeat ? <span className="truncate px-0.5">{student.name}</span> : <span className="opacity-40" aria-hidden>▢</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                    <div className="text-center py-1.5 rounded-xl bg-amber-100/90 border border-amber-200 text-amber-800 text-sm font-medium mt-1">
+                      🪑 교탁
+                    </div>
                   </div>
                 </div>
               </>

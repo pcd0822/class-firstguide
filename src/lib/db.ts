@@ -116,6 +116,17 @@ export async function setStudentQuizTime(classId: string, studentId: string, sec
   await updateDoc(ref, { quizTimeSeconds: seconds });
 }
 
+/** 퀴즈 랭킹 초기화: 모든 학생의 퀴즈 소요 시간을 null로 설정 */
+export async function resetQuizRanking(classId: string) {
+  const students = await getStudents(classId);
+  const batch = writeBatch(getDb());
+  for (const s of students) {
+    const ref = doc(getDb(), 'classes', classId, 'students', s.id);
+    batch.update(ref, { quizTimeSeconds: null });
+  }
+  await batch.commit();
+}
+
 /** 학생 한 명의 자리만 변경 (드래그 앤 드롭 배치용) */
 export async function updateStudentSeat(
   classId: string,

@@ -9,6 +9,7 @@ import {
   getClassSettings,
   setClassSettings,
   setStudentSeated,
+  resetQuizRanking,
 } from '@/lib/db';
 import type { Student, TeacherSettings } from '@/lib/types';
 
@@ -17,6 +18,7 @@ export default function AdminDashboardPage() {
   const classId = (params?.classId as string) ?? 'default';
   const [students, setStudents] = useState<Student[]>([]);
   const [settings, setSettings] = useState<TeacherSettings | null>(null);
+  const [resettingRanking, setResettingRanking] = useState(false);
 
   useEffect(() => {
     getClassSettings(classId).then((s) => {
@@ -55,6 +57,16 @@ export default function AdminDashboardPage() {
     setStudentSeated(classId, student.id, false);
   };
 
+  const handleResetRanking = async () => {
+    if (!confirm('퀴즈 랭킹을 초기화할까요? 모든 학생의 퀴즈 완료 기록이 지워집니다.')) return;
+    setResettingRanking(true);
+    try {
+      await resetQuizRanking(classId);
+    } finally {
+      setResettingRanking(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-slate-800">실시간 대시보드</h1>
@@ -68,64 +80,68 @@ export default function AdminDashboardPage() {
           <div className="flex gap-4 min-w-max">
             <div
               className="flex flex-col justify-between w-14 shrink-0 text-center text-slate-500 text-xs font-medium border-2 border-slate-200 rounded-xl bg-slate-50 py-3"
-              style={{ minHeight: `${(rows + 1) * 5.5 + (rows + 1) * 1}rem` }}
+              style={{ minHeight: `${rows * 5.5 + rows + 4}rem` }}
             >
               <span>🚪 문</span>
               <span>🚪 문</span>
             </div>
             <div className="flex flex-col gap-4">
-              {Array.from({ length: rows + 1 }, (_, i) => {
-                const deskRow = Math.floor(rows / 2);
-                if (i === deskRow) {
-                  return (
-                    <div key={`desk-${i}`} className="text-center py-3 rounded-xl bg-amber-100 border border-amber-200 text-amber-800 text-sm font-medium px-4">
-                      🪑 교탁
-                    </div>
-                  );
-                }
-                const seatRow = i < deskRow ? i : i - 1;
-                return (
-                  <div
-                    key={i}
-                    className="grid gap-4"
-                    style={{ gridTemplateColumns: `repeat(${cols}, minmax(4.5rem, 5.5rem))` }}
-                  >
-                    {Array.from({ length: cols }, (_, col) => {
-                      const student = getStudentAt(seatRow, col);
-                      const seated = student?.seated ?? false;
-                      return (
-                        <div
-                          key={col}
-                          className={`relative min-w-[4.5rem] min-h-[4.5rem] w-[5.5rem] h-[5.5rem] rounded-xl flex items-center justify-center text-sm font-medium border-2 group shrink-0 ${
-                            seated ? 'bg-seat-seated border-green-400 text-slate-800' : 'bg-seat-empty border-slate-200 text-slate-500'
-                          }`}
-                          title={student ? `${student.name} (${student.studentId})` : '빈 자리'}
-                        >
-                          {student?.name ?? '-'}
-                          {seated && student && (
-                            <button
-                              type="button"
-                              onClick={(e) => handleUnseat(e, student)}
-                              className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity text-white text-xl font-bold hover:bg-red-500/80"
-                              title="착석 해제"
-                              aria-label="착석 해제"
-                            >
-                              ✕
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
+              {Array.from({ length: rows }, (_, i) => (
+                <div
+                  key={i}
+                  className="grid gap-4"
+                  style={{ gridTemplateColumns: `repeat(${cols}, minmax(4.5rem, 5.5rem))` }}
+                >
+                  {Array.from({ length: cols }, (_, col) => {
+                    const student = getStudentAt(i, col);
+                    const seated = student?.seated ?? false;
+                    return (
+                      <div
+                        key={col}
+                        className={`relative min-w-[4.5rem] min-h-[4.5rem] w-[5.5rem] h-[5.5rem] rounded-xl flex items-center justify-center text-sm font-medium border-2 group shrink-0 ${
+                          seated ? 'bg-seat-seated border-green-400 text-slate-800' : 'bg-seat-empty border-slate-200 text-slate-500'
+                        }`}
+                        title={student ? `${student.name} (${student.studentId})` : '빈 자리'}
+                      >
+                        {student?.name ?? '-'}
+                        {seated && student && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleUnseat(e, student)}
+                            className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity text-white text-xl font-bold hover:bg-red-500/80"
+                            title="착석 해제"
+                            aria-label="착석 해제"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+              <div className="text-center py-3 rounded-xl bg-amber-100 border border-amber-200 text-amber-800 text-sm font-medium">
+                🪑 교탁
+              </div>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h2 className="font-semibold text-slate-800 mb-1">퀴즈 랭킹</h2>
-          <p className="text-sm text-slate-500 mb-4">완료한 학생 기준 · 빠른 순 (학생 화면에도 노출)</p>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div>
+              <h2 className="font-semibold text-slate-800 mb-1">퀴즈 랭킹</h2>
+              <p className="text-sm text-slate-500">완료한 학생 기준 · 빠른 순 (학생 화면에도 노출)</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleResetRanking}
+              disabled={resettingRanking || ranking.length === 0}
+              className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-200 text-slate-700 hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {resettingRanking ? '초기화 중...' : '랭킹 초기화'}
+            </button>
+          </div>
           <div className="space-y-3">
             {ranking.length === 0 ? (
               <div className="rounded-xl bg-slate-50 border border-slate-200 py-8 text-center text-slate-500">

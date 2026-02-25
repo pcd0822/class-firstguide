@@ -58,10 +58,10 @@ export default function AdminStudentsPage() {
 
   const rows = settings?.rows ?? 4;
   const cols = settings?.cols ?? 6;
-  const unassignedStudents = students.filter((s) => isUnassigned(s.seat));
+  const unassignedStudents = students.filter((s: Student) => isUnassigned(s.seat));
   const getStudentAt = useCallback(
     (row: number, col: number) =>
-      students.find((s) => s.seat.row === row && s.seat.col === col),
+      students.find((s: Student) => s.seat.row === row && s.seat.col === col),
     [students]
   );
 
@@ -71,9 +71,9 @@ export default function AdminStudentsPage() {
     setMessage(null);
     try {
       const newId = studentId.trim() || `s${Date.now()}`;
-      const existing = students.find((s) => s.studentId === newId);
+      const existing = students.find((s: Student) => s.studentId === newId);
       const list: Student[] = existing
-        ? students.map((s) =>
+        ? students.map((s: Student) =>
             s.id === existing.id
               ? { ...s, name: name.trim(), seat: UNASSIGNED }
               : s
@@ -244,7 +244,7 @@ export default function AdminStudentsPage() {
             {unassignedStudents.length === 0 ? (
               <li className="text-slate-400 text-sm">없음</li>
             ) : (
-              unassignedStudents.map((s) => (
+              unassignedStudents.map((s: Student) => (
                 <li
                   key={s.id}
                   draggable
@@ -266,48 +266,38 @@ export default function AdminStudentsPage() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 overflow-x-auto">
           <h2 className="font-semibold text-slate-800 mb-3">좌석 배치 (드래그 앤 드롭)</h2>
           <p className="text-sm text-slate-500 mb-4">
-            {rows}행 × {cols}열. 미배정 학생을 자리 칸에 놓으면 배정됩니다. 왼쪽 문, 가운데 교탁 기준으로 배치됩니다.
+            {rows}행 × {cols}열. 미배정 학생을 자리 칸에 놓으면 배정됩니다. 왼쪽 문, 아래쪽 교탁 기준으로 배치됩니다.
           </p>
           <div className="flex gap-2">
             <div
               className="flex flex-col justify-between w-12 shrink-0 text-center text-slate-500 text-xs font-medium border-2 border-slate-200 rounded-xl bg-slate-50 py-2"
-              style={{ minHeight: `${(rows + 1) * 5 + 0.5}rem` }}
+              style={{ minHeight: `${rows * 5 + 4 + 0.5}rem` }}
             >
               <span>🚪 문</span>
               <span>🚪 문</span>
             </div>
             <div className="flex flex-col gap-2">
-              {Array.from({ length: rows + 1 }, (_, i) => {
-                const deskRow = Math.floor(rows / 2);
-                if (i === deskRow) {
-                  return (
-                    <div key={`desk-${i}`} className="text-center py-2.5 rounded-xl bg-amber-100 border border-amber-200 text-amber-800 text-sm font-medium">
-                      🪑 교탁
-                    </div>
-                  );
-                }
-                const seatRow = i < deskRow ? i : i - 1;
-                return (
-                  <div
-                    key={i}
-                    className="grid gap-2"
-                    style={{ gridTemplateColumns: `repeat(${cols}, minmax(4.5rem, 5rem))` }}
-                  >
-                    {Array.from({ length: cols }, (_, col) => {
-                      const student = getStudentAt(seatRow, col);
-                      const isOver = dragOverSeat?.row === seatRow && dragOverSeat?.col === col;
+              {Array.from({ length: rows }, (_, i) => (
+                <div
+                  key={i}
+                  className="grid gap-2"
+                  style={{ gridTemplateColumns: `repeat(${cols}, minmax(4.5rem, 5rem))` }}
+                >
+                  {Array.from({ length: cols }, (_, col) => {
+                    const student = getStudentAt(i, col);
+                    const isOver = dragOverSeat?.row === i && dragOverSeat?.col === col;
                       return (
                         <div
                           key={col}
                           onDragOver={(e) => {
                             e.preventDefault();
                             e.dataTransfer.dropEffect = 'move';
-                            setDragOverSeat({ row: seatRow, col });
+                            setDragOverSeat({ row: i, col });
                           }}
-                          onDragLeave={() => setDragOverSeat((prev) => (prev?.row === seatRow && prev?.col === col ? null : prev))}
+                          onDragLeave={() => setDragOverSeat((prev: { row: number; col: number } | null) => (prev?.row === i && prev?.col === col ? null : prev))}
                           onDrop={(e) => {
                             e.preventDefault();
-                            handleDropOnSeat(seatRow, col);
+                            handleDropOnSeat(i, col);
                           }}
                           className={`min-w-[4.5rem] min-h-[4.5rem] w-20 h-20 rounded-xl border-2 flex items-center justify-center text-sm font-medium transition-colors ${
                             isOver ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50 hover:border-slate-300'
@@ -328,14 +318,16 @@ export default function AdminStudentsPage() {
                               {student.name}
                             </span>
                           ) : (
-                            <span className="text-slate-400 text-xs">{seatRow + 1}-{col + 1}</span>
+                            <span className="text-slate-400 text-xs">{i + 1}-{col + 1}</span>
                           )}
                         </div>
                       );
                     })}
-                  </div>
-                );
-              })}
+                </div>
+              ))}
+              <div className="text-center py-2.5 rounded-xl bg-amber-100 border border-amber-200 text-amber-800 text-sm font-medium">
+                🪑 교탁
+              </div>
             </div>
           </div>
         </div>
