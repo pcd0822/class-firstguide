@@ -11,3 +11,16 @@ body {
   color: var(--foreground);
   background: var(--background);
 }
+
+/* 학생 화면: 귀여운 그라데이션 배경 */
+.student-flow-bg {
+  background: linear-gradient(165deg, #fef7ee 0%, #fce8f0 30%, #e8f4fc 70%, #f0f9f0 100%);
+  min-height: 100vh;
+}
+
+/* 부드러운 일러스트 카드 */
+.student-card {
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
