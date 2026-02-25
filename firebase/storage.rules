@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 교사 업로드 이미지: class-images/{classId}/{initial|correct|wrong1|wrong2|finalSuccess}
+    match /class-images/{classId}/{imageKey} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 학급 설정 및 하위 컬렉션 (students, quizzes)
+    match /classes/{classId} {
+      allow read, write: if true;
+      match /students/{studentId} {
+        allow read, write: if true;
+      }
+      match /quizzes/{quizId} {
+        allow read, write: if true;
+      }
+    }
+  }
+}

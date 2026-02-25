@@ -1,0 +1,10 @@
+# Netlify 배포 설정 (Next.js)
+# Next.js는 Netlify에서 자동 감지됩니다. OpenNext 어댑터가 빌드/배포를 처리합니다.
+
+[build]
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Firebase 등 환경 변수는 Netlify 대시보드 → Site settings → Environment variables 에서 설정하세요.
