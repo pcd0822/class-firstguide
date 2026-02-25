@@ -5,13 +5,13 @@ import {
   deleteObject,
   UploadTaskSnapshot,
 } from 'firebase/storage';
-import { storage } from './firebase';
+import { getStorageSafe } from './firebase';
 import type { ImageKeys } from './types';
 
 const UPLOAD_PATH = 'class-images';
 
 export function imageRef(classId: string, key: ImageKeys) {
-  return ref(storage, `${UPLOAD_PATH}/${classId}/${key}`);
+  return ref(getStorageSafe(), `${UPLOAD_PATH}/${classId}/${key}`);
 }
 
 export function uploadImage(

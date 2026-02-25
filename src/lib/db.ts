@@ -13,7 +13,7 @@ import {
   writeBatch,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { getDb } from './firebase';
 import type { Student, QuizItem, TeacherSettings, ImageKeys } from './types';
 import { IMAGE_KEYS } from './types';
 
@@ -26,15 +26,15 @@ const defaultImages: TeacherSettings['images'] = {
 };
 
 export function classRef(classId: string) {
-  return doc(db, 'classes', classId);
+  return doc(getDb(), 'classes', classId);
 }
 
 export function studentsRef(classId: string) {
-  return collection(db, 'classes', classId, 'students');
+  return collection(getDb(), 'classes', classId, 'students');
 }
 
 export function quizzesRef(classId: string) {
-  return collection(db, 'classes', classId, 'quizzes');
+  return collection(getDb(), 'classes', classId, 'quizzes');
 }
 
 export async function getClassSettings(classId: string): Promise<TeacherSettings | null> {
@@ -107,12 +107,12 @@ export function subscribeStudents(
 }
 
 export async function setStudentSeated(classId: string, studentId: string, seated: boolean) {
-  const ref = doc(db, 'classes', classId, 'students', studentId);
+  const ref = doc(getDb(), 'classes', classId, 'students', studentId);
   await updateDoc(ref, { seated });
 }
 
 export async function setStudentQuizTime(classId: string, studentId: string, seconds: number) {
-  const ref = doc(db, 'classes', classId, 'students', studentId);
+  const ref = doc(getDb(), 'classes', classId, 'students', studentId);
   await updateDoc(ref, { quizTimeSeconds: seconds });
 }
 
@@ -121,10 +121,10 @@ export async function upsertStudents(
   students: (Omit<Student, 'id'> & { id?: string })[]
 ) {
   const ref = studentsRef(classId);
-  const batch = writeBatch(db);
+  const batch = writeBatch(getDb());
   for (const s of students) {
     const id = ('id' in s && s.id) || s.studentId || doc(ref).id;
-    const docRef = doc(db, 'classes', classId, 'students', id);
+    const docRef = doc(getDb(), 'classes', classId, 'students', id);
     batch.set(docRef, {
       name: s.name,
       studentId: s.studentId,
@@ -177,11 +177,11 @@ export async function updateQuiz(
   quizId: string,
   data: Partial<Omit<QuizItem, 'id'>>
 ) {
-  await updateDoc(doc(db, 'classes', classId, 'quizzes', quizId), data as Record<string, unknown>);
+  await updateDoc(doc(getDb(), 'classes', classId, 'quizzes', quizId), data as Record<string, unknown>);
 }
 
 export async function deleteQuiz(classId: string, quizId: string) {
-  await deleteDoc(doc(db, 'classes', classId, 'quizzes', quizId));
+  await deleteDoc(doc(getDb(), 'classes', classId, 'quizzes', quizId));
 }
 
 export async function findStudentByName(classId: string, name: string): Promise<Student | null> {
