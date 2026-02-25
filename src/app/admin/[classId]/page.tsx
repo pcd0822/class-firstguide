@@ -60,10 +60,10 @@ export default function AdminDashboardPage() {
             연두색 = 착석 완료 · {seatedCount} / {students.length}명
           </p>
           <div
-            className="inline-grid gap-1"
+            className="inline-grid gap-2"
             style={{
-              gridTemplateColumns: `repeat(${cols}, minmax(2rem, 1fr))`,
-              gridTemplateRows: `repeat(${rows}, minmax(2rem, 1fr))`,
+              gridTemplateColumns: `repeat(${cols}, minmax(4rem, 5rem))`,
+              gridTemplateRows: `repeat(${rows}, minmax(4rem, 5rem))`,
             }}
           >
             {Array.from({ length: rows * cols }, (_, i) => {
@@ -74,14 +74,14 @@ export default function AdminDashboardPage() {
               return (
                 <div
                   key={i}
-                  className={`w-10 h-10 rounded flex items-center justify-center text-xs font-medium border ${
+                  className={`min-w-[4rem] min-h-[4rem] w-20 h-20 rounded-xl flex items-center justify-center text-sm font-medium border-2 ${
                     seated
                       ? 'bg-seat-seated border-green-400 text-slate-800'
                       : 'bg-seat-empty border-slate-200 text-slate-500'
                   }`}
                   title={student ? `${student.name} (${student.studentId})` : '빈 자리'}
                 >
-                  {student?.name?.slice(0, 1) ?? '-'}
+                  {student?.name ?? '-'}
                 </div>
               );
             })}

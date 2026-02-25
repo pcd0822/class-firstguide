@@ -1,14 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
   getStudents,
   getClassSettings,
   upsertStudents,
   subscribeStudents,
+  updateStudentSeat,
 } from '@/lib/db';
+import { isFirebaseConfigured } from '@/lib/firebase';
 import type { Student, TeacherSettings } from '@/lib/types';
+
+const UNASSIGNED = { row: -1, col: -1 };
+
+function isUnassigned(seat: { row: number; col: number }) {
+  return seat.row < 0 || seat.col < 0;
+}
 
 function parseCSV(text: string): { name: string; studentId: string; row: number; col: number }[] {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
@@ -17,9 +25,9 @@ function parseCSV(text: string): { name: string; studentId: string; row: number;
     const parts = lines[i].split(',').map((p) => p.trim());
     const name = parts[0] ?? '';
     const studentId = parts[1] ?? String(i + 1);
-    const row = parseInt(parts[2] ?? '0', 10) || 0;
-    const col = parseInt(parts[3] ?? '0', 10) || 0;
-    if (name) result.push({ name, studentId, row, col });
+    const row = parts[2] !== undefined && parts[2] !== '' ? parseInt(parts[2], 10) : -1;
+    const col = parts[3] !== undefined && parts[3] !== '' ? parseInt(parts[3], 10) : -1;
+    if (name) result.push({ name, studentId, row: isNaN(row) ? -1 : row, col: isNaN(col) ? -1 : col });
   }
   return result;
 }
@@ -31,43 +39,60 @@ export default function AdminStudentsPage() {
   const [settings, setSettings] = useState<TeacherSettings | null>(null);
   const [name, setName] = useState('');
   const [studentId, setStudentId] = useState('');
-  const [row, setRow] = useState(0);
-  const [col, setCol] = useState(0);
   const [csvText, setCsvText] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [draggingStudent, setDraggingStudent] = useState<Student | null>(null);
+  const [dragOverSeat, setDragOverSeat] = useState<{ row: number; col: number } | null>(null);
 
   useEffect(() => {
+    if (!isFirebaseConfigured()) return;
     getClassSettings(classId).then(setSettings);
   }, [classId]);
 
   useEffect(() => {
+    if (!isFirebaseConfigured()) return;
     const unsub = subscribeStudents(classId, setStudents);
     return () => unsub();
   }, [classId]);
 
   const rows = settings?.rows ?? 4;
   const cols = settings?.cols ?? 6;
+  const unassignedStudents = students.filter((s) => isUnassigned(s.seat));
+  const getStudentAt = useCallback(
+    (row: number, col: number) =>
+      students.find((s) => s.seat.row === row && s.seat.col === col),
+    [students]
+  );
 
-  const handleAdd = async () => {
+  const handleAddOnly = async () => {
     if (!name.trim()) return;
     setSaving(true);
     setMessage(null);
     try {
-      const list = [
-        ...students.filter((s) => s.studentId !== studentId),
-        {
-          name: name.trim(),
-          studentId: studentId.trim() || `s${Date.now()}`,
-          seat: { row, col },
-          seated: false,
-          quizTimeSeconds: null,
-        },
-      ];
+      const newId = studentId.trim() || `s${Date.now()}`;
+      const existing = students.find((s) => s.studentId === newId);
+      const list: Student[] = existing
+        ? students.map((s) =>
+            s.id === existing.id
+              ? { ...s, name: name.trim(), seat: UNASSIGNED }
+              : s
+          )
+        : [
+            ...students,
+            {
+              id: newId,
+              name: name.trim(),
+              studentId: newId,
+              seat: UNASSIGNED,
+              seated: false,
+              quizTimeSeconds: null,
+            },
+          ];
       await upsertStudents(
         classId,
         list.map((s) => ({
-          id: (s as Student).id,
+          id: s.id,
           name: s.name,
           studentId: s.studentId,
           seat: s.seat,
@@ -77,9 +102,7 @@ export default function AdminStudentsPage() {
       );
       setName('');
       setStudentId('');
-      setRow(0);
-      setCol(0);
-      setMessage('추가되었습니다.');
+      setMessage('추가되었습니다. 미배정 목록에서 좌석으로 드래그하세요.');
     } catch (e) {
       setMessage('저장 실패: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -90,7 +113,7 @@ export default function AdminStudentsPage() {
   const handleCsvUpload = async () => {
     const parsed = parseCSV(csvText);
     if (parsed.length === 0) {
-      setMessage('CSV 형식: 이름,학번,행,열 (한 줄에 한 명)');
+      setMessage('CSV 형식: 이름,학번[,행,열]. 행/열 생략 시 미배정.');
       return;
     }
     setSaving(true);
@@ -99,11 +122,13 @@ export default function AdminStudentsPage() {
       const existing = await getStudents(classId);
       const byKey = new Map(existing.map((s) => [s.studentId, s]));
       for (const p of parsed) {
+        const row = p.row >= 0 ? p.row : -1;
+        const col = p.col >= 0 ? p.col : -1;
         byKey.set(p.studentId, {
           id: byKey.get(p.studentId)?.id ?? p.studentId,
           name: p.name,
           studentId: p.studentId,
-          seat: { row: p.row, col: p.col },
+          seat: { row, col },
           seated: byKey.get(p.studentId)?.seated ?? false,
           quizTimeSeconds: byKey.get(p.studentId)?.quizTimeSeconds ?? null,
         });
@@ -128,6 +153,26 @@ export default function AdminStudentsPage() {
     }
   };
 
+  const handleDropOnSeat = async (row: number, col: number) => {
+    if (!draggingStudent) return;
+    setDragOverSeat(null);
+    setDraggingStudent(null);
+    const previous = getStudentAt(row, col);
+    setSaving(true);
+    setMessage(null);
+    try {
+      await updateStudentSeat(classId, draggingStudent.id, { row, col });
+      if (previous && previous.id !== draggingStudent.id) {
+        await updateStudentSeat(classId, previous.id, UNASSIGNED);
+      }
+      setMessage(`${draggingStudent.name} → ${row + 1}행 ${col + 1}열`);
+    } catch (e) {
+      setMessage('자리 저장 실패: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-800">학생 및 자리 매핑</h1>
@@ -137,14 +182,17 @@ export default function AdminStudentsPage() {
       )}
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <h2 className="font-semibold text-slate-800 mb-3">한 명씩 추가</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+        <h2 className="font-semibold text-slate-800 mb-3">학생 등록</h2>
+        <p className="text-sm text-slate-500 mb-3">
+          이름과 학번만 입력한 뒤 추가하면, 아래 미배정 목록에 뜹니다. 해당 이름을 좌석 그리드로 드래그해서 배치하세요.
+        </p>
+        <div className="flex flex-wrap gap-3 items-end">
           <div>
             <label className="block text-sm text-slate-600 mb-1">이름</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2"
+              className="w-40 rounded border border-slate-300 px-3 py-2"
               placeholder="홍길동"
             />
           </div>
@@ -153,36 +201,14 @@ export default function AdminStudentsPage() {
             <input
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2"
+              className="w-24 rounded border border-slate-300 px-3 py-2"
               placeholder="1"
             />
           </div>
-          <div>
-            <label className="block text-sm text-slate-600 mb-1">행 (0~{rows - 1})</label>
-            <input
-              type="number"
-              min={0}
-              max={rows - 1}
-              value={row}
-              onChange={(e) => setRow(Number(e.target.value))}
-              className="w-full rounded border border-slate-300 px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-slate-600 mb-1">열 (0~{cols - 1})</label>
-            <input
-              type="number"
-              min={0}
-              max={cols - 1}
-              value={col}
-              onChange={(e) => setCol(Number(e.target.value))}
-              className="w-full rounded border border-slate-300 px-3 py-2"
-            />
-          </div>
           <button
-            onClick={handleAdd}
+            onClick={handleAddOnly}
             disabled={saving}
-            className="py-2 rounded-lg bg-slate-800 text-white font-medium hover:bg-slate-700 disabled:opacity-50"
+            className="py-2 px-4 rounded-lg bg-slate-800 text-white font-medium hover:bg-slate-700 disabled:opacity-50"
           >
             추가
           </button>
@@ -190,16 +216,16 @@ export default function AdminStudentsPage() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <h2 className="font-semibold text-slate-800 mb-3">CSV / 엑셀 붙여넣기</h2>
+        <h2 className="font-semibold text-slate-800 mb-3">CSV 붙여넣기</h2>
         <p className="text-sm text-slate-500 mb-2">
-          형식: 이름, 학번, 행, 열 (한 줄에 한 명). 예: 홍길동,1,0,0
+          형식: 이름, 학번 [, 행, 열]. 행·열을 넣으면 해당 자리에 배정되고, 생략하면 미배정입니다.
         </p>
         <textarea
           value={csvText}
           onChange={(e) => setCsvText(e.target.value)}
-          rows={6}
+          rows={4}
           className="w-full rounded border border-slate-300 px-3 py-2 font-mono text-sm"
-          placeholder="홍길동,1,0,0&#10;김철수,2,0,1"
+          placeholder="홍길동,1&#10;김철수,2,0,1"
         />
         <button
           onClick={handleCsvUpload}
@@ -210,15 +236,91 @@ export default function AdminStudentsPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <h2 className="font-semibold text-slate-800 mb-3">등록된 학생 ({students.length}명)</h2>
-        <ul className="space-y-1 text-sm">
-          {students.map((s) => (
-            <li key={s.id}>
-              {s.name} · 학번 {s.studentId} · 자리 ({s.seat.row}, {s.seat.col})
-            </li>
-          ))}
-        </ul>
+      <div className="grid lg:grid-cols-[auto_1fr] gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <h2 className="font-semibold text-slate-800 mb-3">미배정 학생</h2>
+          <p className="text-sm text-slate-500 mb-3">아래 이름을 좌석 그리드로 드래그하세요.</p>
+          <ul className="space-y-2 min-w-[10rem]">
+            {unassignedStudents.length === 0 ? (
+              <li className="text-slate-400 text-sm">없음</li>
+            ) : (
+              unassignedStudents.map((s) => (
+                <li
+                  key={s.id}
+                  draggable
+                  onDragStart={(e) => {
+                    setDraggingStudent(s);
+                    e.dataTransfer.setData('text/plain', s.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragEnd={() => setDraggingStudent(null)}
+                  className="px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 cursor-grab active:cursor-grabbing hover:bg-slate-200 text-sm font-medium"
+                >
+                  {s.name} <span className="text-slate-500">({s.studentId})</span>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 overflow-x-auto">
+          <h2 className="font-semibold text-slate-800 mb-3">좌석 배치 (드래그 앤 드롭)</h2>
+          <p className="text-sm text-slate-500 mb-4">
+            {rows}행 × {cols}열. 미배정 학생을 자리 칸에 놓으면 배정됩니다.
+          </p>
+          <div
+            className="inline-grid gap-2"
+            style={{
+              gridTemplateColumns: `repeat(${cols}, minmax(4.5rem, 5rem))`,
+              gridTemplateRows: `repeat(${rows}, minmax(4.5rem, 5rem))`,
+            }}
+          >
+            {Array.from({ length: rows * cols }, (_, i) => {
+              const row = Math.floor(i / cols);
+              const col = i % cols;
+              const student = getStudentAt(row, col);
+              const isOver = dragOverSeat?.row === row && dragOverSeat?.col === col;
+              return (
+                <div
+                  key={i}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    setDragOverSeat({ row, col });
+                  }}
+                  onDragLeave={() => setDragOverSeat((prev) => (prev?.row === row && prev?.col === col ? null : prev))}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleDropOnSeat(row, col);
+                  }}
+                  className={`min-w-[4.5rem] min-h-[4.5rem] w-20 h-20 rounded-xl border-2 flex items-center justify-center text-sm font-medium transition-colors ${
+                    isOver
+                      ? 'border-emerald-500 bg-emerald-50'
+                      : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                  }`}
+                >
+                  {student ? (
+                    <span
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggingStudent(student);
+                        e.dataTransfer.setData('text/plain', student.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragEnd={() => setDraggingStudent(null)}
+                      className="text-slate-800 truncate px-1 cursor-grab active:cursor-grabbing w-full text-center"
+                      title={`${student.name} (${student.studentId}) — 드래그하여 이동`}
+                    >
+                      {student.name}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 text-xs">{row + 1}-{col + 1}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -190,16 +190,29 @@ export default function StudentFlowPage() {
           <div className="bg-white rounded-2xl shadow-lg p-6 w-full mb-4">
             <h2 className="text-xl font-bold text-slate-800 mb-2">자리 안내</h2>
             <p className="text-slate-600">학번: <strong>{student.studentId}</strong></p>
-            <p className="text-slate-600">
-              자리: <strong>{student.seat.row + 1}번째 줄, {student.seat.col + 1}번째</strong>
-            </p>
+            {student.seat.row >= 0 && student.seat.col >= 0 ? (
+              <p className="text-slate-600">
+                자리: <strong>{student.seat.row + 1}번째 줄, {student.seat.col + 1}번째</strong>
+              </p>
+            ) : (
+              <p className="text-amber-700 font-medium">자리가 아직 배정되지 않았습니다. 선생님께 문의하세요.</p>
+            )}
           </div>
-          <button
-            onClick={handleSeated}
-            className="w-full py-4 rounded-xl bg-emerald-500 text-white text-lg font-bold hover:bg-emerald-400 shadow-md"
-          >
-            자리에 앉았어요
-          </button>
+          {student.seat.row >= 0 && student.seat.col >= 0 ? (
+            <button
+              onClick={handleSeated}
+              className="w-full py-4 rounded-xl bg-emerald-500 text-white text-lg font-bold hover:bg-emerald-400 shadow-md"
+            >
+              자리에 앉았어요
+            </button>
+          ) : (
+            <button
+              onClick={() => setStep('wait')}
+              className="w-full py-4 rounded-xl bg-slate-500 text-white text-lg font-bold hover:bg-slate-400 shadow-md"
+            >
+              퀴즈로 진행
+            </button>
+          )}
         </div>
       )}
 

@@ -116,6 +116,16 @@ export async function setStudentQuizTime(classId: string, studentId: string, sec
   await updateDoc(ref, { quizTimeSeconds: seconds });
 }
 
+/** 학생 한 명의 자리만 변경 (드래그 앤 드롭 배치용) */
+export async function updateStudentSeat(
+  classId: string,
+  studentDocId: string,
+  seat: { row: number; col: number }
+) {
+  const ref = doc(getDb(), 'classes', classId, 'students', studentDocId);
+  await updateDoc(ref, { seat });
+}
+
 export async function upsertStudents(
   classId: string,
   students: (Omit<Student, 'id'> & { id?: string })[]
