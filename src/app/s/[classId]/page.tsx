@@ -244,47 +244,45 @@ export default function StudentFlowPage() {
                 <p className="text-slate-700 font-medium mb-3 flex items-center gap-1.5">
                   <span aria-hidden>📍</span> 너의 자리는? 아래 표시된 자리에 가서 앉아.
                 </p>
-                <div className="flex flex-col my-4">
-                  <div className="flex gap-2">
-                    <div
-                      className="flex flex-col justify-between w-11 shrink-0 text-center text-slate-500 text-xs font-medium border-2 border-slate-200 rounded-xl bg-slate-100/80 py-2"
-                      style={{ minHeight: `${((settings?.rows ?? 4) * 2.75) + 0.5}rem` }}
-                    >
-                      <span>🚪 문</span>
-                      <span>🚪 문</span>
-                    </div>
-                    <div
-                      className="inline-grid gap-1.5 p-3 rounded-2xl bg-slate-50/80 border border-slate-200/80"
-                      style={{
-                        gridTemplateColumns: `repeat(${settings?.cols ?? 6}, minmax(2.5rem, 3rem))`,
-                        gridTemplateRows: `repeat(${settings?.rows ?? 4}, minmax(2.5rem, 3rem))`,
-                      }}
-                    >
-                      {Array.from({ length: (settings?.rows ?? 4) * (settings?.cols ?? 6) }, (_, i) => {
-                        const r = Math.floor(i / (settings?.cols ?? 6));
-                        const c = i % (settings?.cols ?? 6);
-                        const isMySeat = student.seat.row === r && student.seat.col === c;
+                <div className="flex gap-2 my-4">
+                  <div
+                    className="flex flex-col justify-between w-11 shrink-0 text-center text-slate-500 text-xs font-medium border-2 border-slate-200 rounded-xl bg-slate-100/80 py-2"
+                    style={{ minHeight: `${((settings?.rows ?? 4) + 1) * 2.75 + 0.5}rem` }}
+                  >
+                    <span>🚪 문</span>
+                    <span>🚪 문</span>
+                  </div>
+                  <div className="flex flex-col gap-1.5 p-3 rounded-2xl bg-slate-50/80 border border-slate-200/80">
+                    {Array.from({ length: (settings?.rows ?? 4) + 1 }, (_, i) => {
+                      const r = settings?.rows ?? 4;
+                      const c = settings?.cols ?? 6;
+                      const deskRow = Math.floor(r / 2);
+                      if (i === deskRow) {
                         return (
-                          <div
-                            key={i}
-                            className={`min-w-[2.5rem] min-h-[2.5rem] rounded-xl border-2 flex items-center justify-center text-xs font-bold ${
-                              isMySeat
-                                ? 'bg-gradient-to-br from-amber-100 to-rose-100 border-amber-400 text-amber-800 shadow-sm'
-                                : 'bg-white/60 border-slate-200 text-slate-400'
-                            }`}
-                          >
-                            {isMySeat ? (
-                              <span className="truncate px-0.5">{student.name}</span>
-                            ) : (
-                              <span className="opacity-40" aria-hidden>▢</span>
-                            )}
+                          <div key={`desk-${i}`} className="text-center py-1.5 rounded-xl bg-amber-100/90 border border-amber-200 text-amber-800 text-sm font-medium">
+                            🪑 교탁
                           </div>
                         );
-                      })}
-                    </div>
-                  </div>
-                  <div className="text-center py-2 mt-2 rounded-xl bg-amber-100/90 border border-amber-200 text-amber-800 text-sm font-medium">
-                    🪑 교탁
+                      }
+                      const seatRow = i < deskRow ? i : i - 1;
+                      return (
+                        <div key={i} className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${c}, minmax(2.5rem, 3rem))` }}>
+                          {Array.from({ length: c }, (_, col) => {
+                            const isMySeat = student.seat.row === seatRow && student.seat.col === col;
+                            return (
+                              <div
+                                key={col}
+                                className={`min-w-[2.5rem] min-h-[2.5rem] rounded-xl border-2 flex items-center justify-center text-xs font-bold ${
+                                  isMySeat ? 'bg-gradient-to-br from-amber-100 to-rose-100 border-amber-400 text-amber-800 shadow-sm' : 'bg-white/60 border-slate-200 text-slate-400'
+                                }`}
+                              >
+                                {isMySeat ? <span className="truncate px-0.5">{student.name}</span> : <span className="opacity-40" aria-hidden>▢</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </>
@@ -295,12 +293,17 @@ export default function StudentFlowPage() {
             )}
           </div>
           {student.seat.row >= 0 && student.seat.col >= 0 ? (
-            <button
-              onClick={handleSeated}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-400 text-white text-lg font-bold hover:from-emerald-500 hover:to-teal-500 shadow-lg active:scale-[0.98] transition"
-            >
-              <span className="mr-1.5" aria-hidden>✅</span> 자리에 앉았어요
-            </button>
+            <>
+              <p className="text-slate-600 text-center text-sm mb-4">
+                자리에 가서 앉은 뒤, 아래 버튼을 눌러 주세요.
+              </p>
+              <button
+                onClick={handleSeated}
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-400 text-white text-lg font-bold hover:from-emerald-500 hover:to-teal-500 shadow-lg active:scale-[0.98] transition"
+              >
+                <span className="mr-1.5" aria-hidden>✅</span> 자리에 앉았어요
+              </button>
+            </>
           ) : (
             <button
               onClick={() => setStep('wait')}

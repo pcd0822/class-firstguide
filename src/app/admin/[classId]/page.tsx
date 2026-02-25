@@ -59,64 +59,66 @@ export default function AdminDashboardPage() {
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-slate-800">실시간 대시보드</h1>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <div className="flex flex-col gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8 overflow-auto">
           <h2 className="font-semibold text-slate-800 mb-3">좌석 현황판</h2>
-          <p className="text-sm text-slate-500 mb-3">
+          <p className="text-sm text-slate-500 mb-4">
             연두색 = 착석 완료 · {seatedCount} / {students.length}명 · 녹색 칸에 마우스를 올린 뒤 ✕를 누르면 착석 해제
           </p>
-          <div className="flex flex-col">
-            <div className="flex gap-2">
-              <div
-                className="flex flex-col justify-between w-12 shrink-0 text-center text-slate-500 text-xs font-medium border-2 border-slate-200 rounded-xl bg-slate-50 py-2"
-                style={{ minHeight: `${rows * 5 + 0.5}rem` }}
-              >
-                <span>🚪 문</span>
-                <span>🚪 문</span>
-              </div>
-              <div className="flex flex-col">
-              <div
-                className="inline-grid gap-2"
-                style={{
-                  gridTemplateColumns: `repeat(${cols}, minmax(4rem, 5rem))`,
-                  gridTemplateRows: `repeat(${rows}, minmax(4rem, 5rem))`,
-                }}
-              >
-                {Array.from({ length: rows * cols }, (_, i) => {
-                  const row = Math.floor(i / cols);
-                  const col = i % cols;
-                  const student = getStudentAt(row, col);
-                  const seated = student?.seated ?? false;
+          <div className="flex gap-4 min-w-max">
+            <div
+              className="flex flex-col justify-between w-14 shrink-0 text-center text-slate-500 text-xs font-medium border-2 border-slate-200 rounded-xl bg-slate-50 py-3"
+              style={{ minHeight: `${(rows + 1) * 5.5 + (rows + 1) * 1}rem` }}
+            >
+              <span>🚪 문</span>
+              <span>🚪 문</span>
+            </div>
+            <div className="flex flex-col gap-4">
+              {Array.from({ length: rows + 1 }, (_, i) => {
+                const deskRow = Math.floor(rows / 2);
+                if (i === deskRow) {
                   return (
-                    <div
-                      key={i}
-                      className={`relative min-w-[4rem] min-h-[4rem] w-20 h-20 rounded-xl flex items-center justify-center text-sm font-medium border-2 group ${
-                        seated
-                          ? 'bg-seat-seated border-green-400 text-slate-800'
-                          : 'bg-seat-empty border-slate-200 text-slate-500'
-                      }`}
-                      title={student ? `${student.name} (${student.studentId})` : '빈 자리'}
-                    >
-                      {student?.name ?? '-'}
-                      {seated && student && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleUnseat(e, student)}
-                          className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity text-white text-xl font-bold hover:bg-red-500/80"
-                          title="착석 해제"
-                          aria-label="착석 해제"
-                        >
-                          ✕
-                        </button>
-                      )}
+                    <div key={`desk-${i}`} className="text-center py-3 rounded-xl bg-amber-100 border border-amber-200 text-amber-800 text-sm font-medium px-4">
+                      🪑 교탁
                     </div>
                   );
-                })}
-              </div>
-              <div className="text-center py-2.5 mt-2 rounded-xl bg-amber-100 border border-amber-200 text-amber-800 text-sm font-medium">
-                🪑 교탁
-              </div>
-            </div>
+                }
+                const seatRow = i < deskRow ? i : i - 1;
+                return (
+                  <div
+                    key={i}
+                    className="grid gap-4"
+                    style={{ gridTemplateColumns: `repeat(${cols}, minmax(4.5rem, 5.5rem))` }}
+                  >
+                    {Array.from({ length: cols }, (_, col) => {
+                      const student = getStudentAt(seatRow, col);
+                      const seated = student?.seated ?? false;
+                      return (
+                        <div
+                          key={col}
+                          className={`relative min-w-[4.5rem] min-h-[4.5rem] w-[5.5rem] h-[5.5rem] rounded-xl flex items-center justify-center text-sm font-medium border-2 group shrink-0 ${
+                            seated ? 'bg-seat-seated border-green-400 text-slate-800' : 'bg-seat-empty border-slate-200 text-slate-500'
+                          }`}
+                          title={student ? `${student.name} (${student.studentId})` : '빈 자리'}
+                        >
+                          {student?.name ?? '-'}
+                          {seated && student && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleUnseat(e, student)}
+                              className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity text-white text-xl font-bold hover:bg-red-500/80"
+                              title="착석 해제"
+                              aria-label="착석 해제"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
