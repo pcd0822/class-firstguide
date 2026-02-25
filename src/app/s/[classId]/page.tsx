@@ -9,6 +9,7 @@ import {
   setStudentSeated,
   setStudentQuizTime,
   getQuizzes,
+  getStudents,
 } from '@/lib/db';
 import type { Student, TeacherSettings, QuizItem } from '@/lib/types';
 
@@ -28,6 +29,7 @@ export default function StudentFlowPage() {
   const [nameInput, setNameInput] = useState('');
   const [student, setStudent] = useState<Student | null>(null);
   const [nameError, setNameError] = useState('');
+  const [showWrongNameModal, setShowWrongNameModal] = useState(false);
   const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
   const [quizIndex, setQuizIndex] = useState(0);
   const [answerInput, setAnswerInput] = useState('');
@@ -35,6 +37,7 @@ export default function StudentFlowPage() {
   const [feedback, setFeedback] = useState<'correct' | 'wrong1' | 'wrong2' | null>(null);
   const [timerStart, setTimerStart] = useState<number | null>(null);
   const [totalSeconds, setTotalSeconds] = useState<number | null>(null);
+  const [ranking, setRanking] = useState<{ name: string; quizTimeSeconds: number }[]>([]);
 
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
@@ -64,7 +67,7 @@ export default function StudentFlowPage() {
     setNameError('');
     const found = await findStudentByName(classId, name);
     if (!found) {
-      setNameError('등록된 이름이 없습니다. 이름을 확인해 주세요.');
+      setShowWrongNameModal(true);
       return;
     }
     setStudent(found);
@@ -117,6 +120,14 @@ export default function StudentFlowPage() {
           setTotalSeconds(seconds);
           setStudentQuizTime(classId, student.id, seconds);
           setStep('result');
+          getStudents(classId).then((list) => {
+            const r = list
+              .filter((s) => s.quizTimeSeconds != null)
+              .sort((a, b) => (a.quizTimeSeconds ?? 0) - (b.quizTimeSeconds ?? 0))
+              .slice(0, 10)
+              .map((s) => ({ name: s.name, quizTimeSeconds: s.quizTimeSeconds ?? 0 }));
+            setRanking(r);
+          });
         } else {
           setQuizIndex((i) => i + 1);
         }
@@ -187,6 +198,22 @@ export default function StudentFlowPage() {
                 <span aria-hidden>💬</span> {nameError}
               </p>
             )}
+          {showWrongNameModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowWrongNameModal(false)}>
+                <div className="student-card bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center" onClick={(e) => e.stopPropagation()}>
+                  <p className="text-slate-800 font-medium leading-relaxed mb-6">
+                    자네는 우리 반이 아닌 것 같네!<br />
+                    혹시 이름을 잘못 입력하지는 않았는가?
+                  </p>
+                  <button
+                    onClick={() => setShowWrongNameModal(false)}
+                    className="w-full py-3 rounded-2xl bg-slate-700 text-white font-medium hover:bg-slate-600"
+                  >
+                    확인
+                  </button>
+                </div>
+              </div>
+            )}
             <button
               onClick={handleNameSubmit}
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-rose-400 text-white font-semibold hover:from-amber-500 hover:to-rose-500 shadow-md active:scale-[0.98] transition"
@@ -217,34 +244,48 @@ export default function StudentFlowPage() {
                 <p className="text-slate-700 font-medium mb-3 flex items-center gap-1.5">
                   <span aria-hidden>📍</span> 너의 자리는? 아래 표시된 자리에 가서 앉아.
                 </p>
-                <div
-                  className="inline-grid gap-1.5 mx-auto my-4 p-3 rounded-2xl bg-slate-50/80 border border-slate-200/80"
-                  style={{
-                    gridTemplateColumns: `repeat(${settings?.cols ?? 6}, minmax(2.5rem, 3rem))`,
-                    gridTemplateRows: `repeat(${settings?.rows ?? 4}, minmax(2.5rem, 3rem))`,
-                  }}
-                >
-                  {Array.from({ length: (settings?.rows ?? 4) * (settings?.cols ?? 6) }, (_, i) => {
-                    const r = Math.floor(i / (settings?.cols ?? 6));
-                    const c = i % (settings?.cols ?? 6);
-                    const isMySeat = student.seat.row === r && student.seat.col === c;
-                    return (
-                      <div
-                        key={i}
-                        className={`min-w-[2.5rem] min-h-[2.5rem] rounded-xl border-2 flex items-center justify-center text-xs font-bold ${
-                          isMySeat
-                            ? 'bg-gradient-to-br from-amber-100 to-rose-100 border-amber-400 text-amber-800 shadow-sm'
-                            : 'bg-white/60 border-slate-200 text-slate-400'
-                        }`}
-                      >
-                        {isMySeat ? (
-                          <span className="truncate px-0.5">{student.name}</span>
-                        ) : (
-                          <span className="opacity-40" aria-hidden>▢</span>
-                        )}
-                      </div>
-                    );
-                  })}
+                <div className="flex flex-col my-4">
+                  <div className="flex gap-2">
+                    <div
+                      className="flex flex-col justify-between w-11 shrink-0 text-center text-slate-500 text-xs font-medium border-2 border-slate-200 rounded-xl bg-slate-100/80 py-2"
+                      style={{ minHeight: `${((settings?.rows ?? 4) * 2.75) + 0.5}rem` }}
+                    >
+                      <span>🚪 문</span>
+                      <span>🚪 문</span>
+                    </div>
+                    <div
+                      className="inline-grid gap-1.5 p-3 rounded-2xl bg-slate-50/80 border border-slate-200/80"
+                      style={{
+                        gridTemplateColumns: `repeat(${settings?.cols ?? 6}, minmax(2.5rem, 3rem))`,
+                        gridTemplateRows: `repeat(${settings?.rows ?? 4}, minmax(2.5rem, 3rem))`,
+                      }}
+                    >
+                      {Array.from({ length: (settings?.rows ?? 4) * (settings?.cols ?? 6) }, (_, i) => {
+                        const r = Math.floor(i / (settings?.cols ?? 6));
+                        const c = i % (settings?.cols ?? 6);
+                        const isMySeat = student.seat.row === r && student.seat.col === c;
+                        return (
+                          <div
+                            key={i}
+                            className={`min-w-[2.5rem] min-h-[2.5rem] rounded-xl border-2 flex items-center justify-center text-xs font-bold ${
+                              isMySeat
+                                ? 'bg-gradient-to-br from-amber-100 to-rose-100 border-amber-400 text-amber-800 shadow-sm'
+                                : 'bg-white/60 border-slate-200 text-slate-400'
+                            }`}
+                          >
+                            {isMySeat ? (
+                              <span className="truncate px-0.5">{student.name}</span>
+                            ) : (
+                              <span className="opacity-40" aria-hidden>▢</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="text-center py-2 mt-2 rounded-xl bg-amber-100/90 border border-amber-200 text-amber-800 text-sm font-medium">
+                    🪑 교탁
+                  </div>
                 </div>
               </>
             ) : (
@@ -419,7 +460,7 @@ export default function StudentFlowPage() {
               <p className="text-xl font-bold text-amber-800">완료!</p>
             </div>
           )}
-          <div className="w-full student-card bg-white/95 backdrop-blur p-6 rounded-3xl text-center">
+          <div className="w-full student-card bg-white/95 backdrop-blur p-6 rounded-3xl text-center mb-4">
             <div className="flex justify-center gap-1 mb-2">
               <span className="text-2xl" aria-hidden>⭐</span>
               <span className="text-2xl" aria-hidden>🎉</span>
@@ -431,6 +472,32 @@ export default function StudentFlowPage() {
               총 소요 시간: <strong className="text-amber-600">{totalSeconds != null ? `${Math.floor(totalSeconds / 60)}분 ${totalSeconds % 60}초` : '-'}</strong>
             </p>
           </div>
+          {ranking.length > 0 && (
+            <div className="w-full student-card bg-white/95 backdrop-blur p-5 rounded-3xl">
+              <h3 className="font-bold text-slate-800 mb-3 flex items-center justify-center gap-1.5">
+                <span aria-hidden>🏆</span> 게임 랭킹
+              </h3>
+              <div className="space-y-2">
+                {ranking.map((r, i) => {
+                  const rank = i + 1;
+                  const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
+                  const timeStr = `${Math.floor(r.quizTimeSeconds / 60)}분 ${r.quizTimeSeconds % 60}초`;
+                  return (
+                    <div
+                      key={`${r.name}-${i}`}
+                      className={`flex items-center gap-3 rounded-xl border-2 p-2.5 ${
+                        rank === 1 ? 'bg-amber-50 border-amber-200' : rank === 2 ? 'bg-slate-50 border-slate-200' : rank === 3 ? 'bg-orange-50 border-orange-200' : 'bg-slate-50/50 border-slate-100'
+                      }`}
+                    >
+                      <span className="w-7 text-center text-base font-bold shrink-0">{medal ?? `#${rank}`}</span>
+                      <span className="flex-1 text-sm font-medium text-slate-800 truncate">{r.name}</span>
+                      <span className="text-xs font-semibold text-slate-600 tabular-nums">{timeStr}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </main>
