@@ -466,7 +466,7 @@ export default function StudentFlowPage() {
             </p>
           </div>
           {ranking.length > 0 && (
-            <div className="w-full student-card bg-white/95 backdrop-blur p-5 rounded-3xl">
+            <div className="w-full student-card bg-white/95 backdrop-blur p-5 rounded-3xl mb-5">
               <h3 className="font-bold text-slate-800 mb-3 flex items-center justify-center gap-1.5">
                 <span aria-hidden>🏆</span> 게임 랭킹
               </h3>
