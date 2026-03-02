@@ -32,6 +32,9 @@ export default async function AdminClassLayout({
             <Link href={`/admin/${classId}/images`} className="text-slate-300 hover:text-white">
               이미지
             </Link>
+            <Link href={`/admin/${classId}/notice`} className="text-slate-300 hover:text-white">
+              공지사항
+            </Link>
             <Link href={`/admin/${classId}/qr`} className="text-slate-300 hover:text-white">
               QR/링크
             </Link>

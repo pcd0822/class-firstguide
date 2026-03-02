@@ -491,6 +491,41 @@ export default function StudentFlowPage() {
               </div>
             </div>
           )}
+          {settings?.announcement && (settings.announcement.noticeText.trim() || (settings.announcement.tableRows?.length ?? 0) > 0) && (
+            <div className="w-full student-card bg-white/95 backdrop-blur p-5 rounded-3xl overflow-hidden border-2 border-amber-100 shadow-sm">
+              <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                <span aria-hidden>📅</span> 입학식 일정
+              </h3>
+              {settings.announcement.noticeText.trim() && (
+                <p className="text-slate-600 text-sm mb-4 leading-relaxed">{settings.announcement.noticeText}</p>
+              )}
+              {settings.announcement.tableRows && settings.announcement.tableRows.length > 0 && (
+                <div className="rounded-2xl overflow-hidden border-2 border-amber-100 bg-amber-50/50">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-amber-100/80">
+                        <th className="text-left py-3 px-4 text-amber-900 font-bold text-sm rounded-tl-xl">시간</th>
+                        <th className="text-left py-3 px-4 text-amber-900 font-bold text-sm">일정</th>
+                        <th className="text-left py-3 px-4 text-amber-900 font-bold text-sm rounded-tr-xl">비고</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {settings.announcement.tableRows.map((row, i) => {
+                        const isLast = i === settings.announcement!.tableRows!.length - 1;
+                        return (
+                          <tr key={i} className="bg-white/90 border-t border-amber-100">
+                            <td className={`py-2.5 px-4 text-slate-700 text-sm font-medium ${isLast ? 'rounded-bl-xl' : ''}`}>{row.time || '—'}</td>
+                            <td className="py-2.5 px-4 text-slate-700 text-sm">{row.schedule || '—'}</td>
+                            <td className={`py-2.5 px-4 text-slate-600 text-sm ${isLast ? 'rounded-br-xl' : ''}`}>{row.note || '—'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </main>

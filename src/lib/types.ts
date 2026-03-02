@@ -19,6 +19,21 @@ export interface QuizItem {
 
 export type ImageKeys = 'initial' | 'correct' | 'wrong1' | 'wrong2' | 'finalSuccess';
 
+/** 입학식 일정 테이블 한 행 (시간, 일정, 비고) */
+export interface ScheduleTableRow {
+  time: string;
+  schedule: string;
+  note: string;
+}
+
+/** 클래스 공지사항 (입학식 일정 등) */
+export interface ClassAnnouncement {
+  /** 공지 문구 (선택) */
+  noticeText: string;
+  /** 일정 테이블 - 첫 행은 헤더(시간/일정/비고), 이후 데이터 행 */
+  tableRows: ScheduleTableRow[];
+}
+
 export interface TeacherSettings {
   id: string;
   rows: number;
@@ -30,6 +45,8 @@ export interface TeacherSettings {
     wrong2: string;
     finalSuccess: string;
   };
+  /** 공지사항·입학식 일정 (선택) */
+  announcement?: ClassAnnouncement | null;
 }
 
 export const IMAGE_KEYS: ImageKeys[] = ['initial', 'correct', 'wrong1', 'wrong2', 'finalSuccess'];

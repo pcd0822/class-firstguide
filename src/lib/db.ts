@@ -14,7 +14,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { getDb } from './firebase';
-import type { Student, QuizItem, TeacherSettings, ImageKeys } from './types';
+import type { Student, QuizItem, TeacherSettings, ImageKeys, ClassAnnouncement } from './types';
 import { IMAGE_KEYS } from './types';
 
 const defaultImages: TeacherSettings['images'] = {
@@ -46,6 +46,7 @@ export async function getClassSettings(classId: string): Promise<TeacherSettings
     rows: d?.rows ?? 4,
     cols: d?.cols ?? 6,
     images: { ...defaultImages, ...d?.images },
+    announcement: d?.announcement ?? null,
   };
 }
 
@@ -226,8 +227,18 @@ export function subscribeClassSettings(
       rows: d?.rows ?? 4,
       cols: d?.cols ?? 6,
       images: { ...defaultImages, ...d?.images },
+      announcement: d?.announcement ?? null,
     });
   });
+}
+
+/** 공지사항·입학식 일정 저장 */
+export async function setAnnouncement(
+  classId: string,
+  announcement: ClassAnnouncement | null
+) {
+  const ref = classRef(classId);
+  await setDoc(ref, { announcement, updatedAt: Timestamp.now() }, { merge: true });
 }
 
 export { defaultImages, IMAGE_KEYS };
